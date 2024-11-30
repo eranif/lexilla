@@ -13,7 +13,7 @@
 
 #include "ILexer.h"
 #include "Scintilla.h"
-#include "SciLexer.h"
+#include "ExtraLexers.h"
 
 #include "PropSetSimple.h"
 #include "WordList.h"
@@ -25,6 +25,8 @@
 using namespace Lexilla;
 
 static const char styleSubable[] = { 0 };
+
+#define SCLEX_AUTOMATIC 1000
 
 LexerBase::LexerBase(const LexicalClass *lexClasses_, size_t nClasses_) :
 	lexClasses(lexClasses_), nClasses(nClasses_) {

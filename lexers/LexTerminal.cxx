@@ -17,7 +17,7 @@
 // clang-format off
 #include "ILexer.h"
 #include "Scintilla.h"
-#include "SciLexer.h"
+#include "ExtraLexers.h"
 
 #include "InList.h"
 #include "WordList.h"
@@ -86,89 +86,89 @@ int RecogniseErrorListLine(const char* lineBuffer, Sci_PositionU lengthLine, Sci
 {
     if (lineBuffer[0] == '>') {
         // Command or return status
-        return SCE_TERMINAL_CMD;
+        return wxSTC_TERMINAL_CMD;
     } else if (lineBuffer[0] == '<') {
         // Diff removal.
-        return SCE_TERMINAL_DIFF_DELETION;
+        return wxSTC_TERMINAL_DIFF_DELETION;
     } else if (lineBuffer[0] == '!') {
-        return SCE_TERMINAL_DIFF_CHANGED;
+        return wxSTC_TERMINAL_DIFF_CHANGED;
     } else if (lineBuffer[0] == '+') {
         if (strstart(lineBuffer, "+++ ")) {
-            return SCE_TERMINAL_DIFF_MESSAGE;
+            return wxSTC_TERMINAL_DIFF_MESSAGE;
         } else {
-            return SCE_TERMINAL_DIFF_ADDITION;
+            return wxSTC_TERMINAL_DIFF_ADDITION;
         }
     } else if (lineBuffer[0] == '-' && !(strstart(lineBuffer, "-rw") || strstart(lineBuffer, "-r-"))) {
         if (strstart(lineBuffer, "--- ")) {
-            return SCE_TERMINAL_DIFF_MESSAGE;
+            return wxSTC_TERMINAL_DIFF_MESSAGE;
         } else if (strstart(lineBuffer, "-- ")) {
             // Probably a CMake status message
-            return SCE_TERMINAL_DEFAULT;
+            return wxSTC_TERMINAL_DEFAULT;
         } else {
-            return SCE_TERMINAL_DIFF_DELETION;
+            return wxSTC_TERMINAL_DIFF_DELETION;
         }
     } else if (strstart(lineBuffer, "cf90-")) {
         // Absoft Pro Fortran 90/95 v8.2 error and/or warning message
-        return SCE_TERMINAL_ABSF;
+        return wxSTC_TERMINAL_ABSF;
     } else if (strstart(lineBuffer, "fortcom:")) {
         // Intel Fortran Compiler v8.0 error/warning message
-        return SCE_TERMINAL_IFORT;
+        return wxSTC_TERMINAL_IFORT;
     } else if (strstr(lineBuffer, "File \"") && strstr(lineBuffer, ", line ")) {
-        return SCE_TERMINAL_PYTHON;
+        return wxSTC_TERMINAL_PYTHON;
     } else if (strstr(lineBuffer, " in ") && strstr(lineBuffer, " on line ")) {
-        return SCE_TERMINAL_PHP;
+        return wxSTC_TERMINAL_PHP;
     } else if ((strstart(lineBuffer, "Error ") || strstart(lineBuffer, "Warning ")) && strstr(lineBuffer, " at (") &&
                strstr(lineBuffer, ") : ") && (strstr(lineBuffer, " at (") < strstr(lineBuffer, ") : "))) {
         // Intel Fortran Compiler error/warning message
-        return SCE_TERMINAL_IFC;
+        return wxSTC_TERMINAL_IFC;
     } else if (strstart(lineBuffer, "Error ")) {
         // Borland error message
-        return SCE_TERMINAL_BORLAND;
+        return wxSTC_TERMINAL_BORLAND;
     } else if (strstart(lineBuffer, "Warning ")) {
         // Borland warning message
-        return SCE_TERMINAL_BORLAND;
+        return wxSTC_TERMINAL_BORLAND;
     } else if (strstr(lineBuffer, "at line ") && (strstr(lineBuffer, "at line ") < (lineBuffer + lengthLine)) &&
                strstr(lineBuffer, "file ") && (strstr(lineBuffer, "file ") < (lineBuffer + lengthLine))) {
         // Lua 4 error message
-        return SCE_TERMINAL_LUA;
+        return wxSTC_TERMINAL_LUA;
     } else if (strstr(lineBuffer, " at ") && (strstr(lineBuffer, " at ") < (lineBuffer + lengthLine)) &&
                strstr(lineBuffer, " line ") && (strstr(lineBuffer, " line ") < (lineBuffer + lengthLine)) &&
                (strstr(lineBuffer, " at ") + 4 < (strstr(lineBuffer, " line ")))) {
         // perl error message:
         // <message> at <file> line <line>
-        return SCE_TERMINAL_PERL;
+        return wxSTC_TERMINAL_PERL;
     } else if ((lengthLine >= 6) && (memcmp(lineBuffer, "   at ", 6) == 0) && strstr(lineBuffer, ":line ")) {
         // A .NET traceback
-        return SCE_TERMINAL_NET;
+        return wxSTC_TERMINAL_NET;
     } else if (strstart(lineBuffer, "Line ") && strstr(lineBuffer, ", file ")) {
         // Essential Lahey Fortran error message
-        return SCE_TERMINAL_ELF;
+        return wxSTC_TERMINAL_ELF;
     } else if (strstart(lineBuffer, "line ") && strstr(lineBuffer, " column ")) {
         // HTML tidy style: line 42 column 1
-        return SCE_TERMINAL_TIDY;
+        return wxSTC_TERMINAL_TIDY;
     } else if (strstart(lineBuffer, "\tat ") && strchr(lineBuffer, '(') && strstr(lineBuffer, ".java:")) {
         // Java stack back trace
-        return SCE_TERMINAL_JAVA_STACK;
+        return wxSTC_TERMINAL_JAVA_STACK;
     } else if (strstart(lineBuffer, "In file included from ") || strstart(lineBuffer, "                 from ")) {
         // GCC showing include path to following error
-        return SCE_TERMINAL_GCC_INCLUDED_FROM;
+        return wxSTC_TERMINAL_GCC_INCLUDED_FROM;
     } else if (strstart(lineBuffer, "NMAKE : fatal error")) {
         // Microsoft nmake fatal error:
         // NMAKE : fatal error <code>: <program> : return code <return>
-        return SCE_TERMINAL_MS;
+        return wxSTC_TERMINAL_MS;
     } else if (strstr(lineBuffer, "warning LNK") || strstr(lineBuffer, "error LNK")) {
         // Microsoft linker warning:
         // {<object> : } (warning|error) LNK9999
-        return SCE_TERMINAL_MS;
+        return wxSTC_TERMINAL_MS;
     } else if (IsBashDiagnostic(lineBuffer)) {
         // Bash diagnostic
         // <filename>: line <line>:<message>
-        return SCE_TERMINAL_BASH;
+        return wxSTC_TERMINAL_BASH;
     } else if (IsGccExcerpt(lineBuffer)) {
         // GCC code excerpt and pointer to issue
         //    73 |   GTimeVal last_popdown;
         //       |            ^~~~~~~~~~~~
-        return SCE_TERMINAL_GCC_EXCERPT;
+        return wxSTC_TERMINAL_GCC_EXCERPT;
     } else {
         // Look for one of the following formats:
         // GCC: <filename>:<line>:<message>
@@ -306,26 +306,26 @@ int RecogniseErrorListLine(const char* lineBuffer, Sci_PositionU lengthLine, Sci
         }
         if (state == stGcc) {
             if (initialColonPart) {
-                return SCE_TERMINAL_LUA;
+                return wxSTC_TERMINAL_LUA;
             } else {
                 if (strstr(lineBuffer, "warning:")) {
-                    return SCE_TERMINAL_GCC_WARNING;
+                    return wxSTC_TERMINAL_GCC_WARNING;
                 } else if (strstr(lineBuffer, "note:")) {
-                    return SCE_TERMINAL_GCC_NOTE;
+                    return wxSTC_TERMINAL_GCC_NOTE;
                 } else {
-                    return SCE_TERMINAL_GCC;
+                    return wxSTC_TERMINAL_GCC;
                 }
             }
         } else if ((state == stMsVc) || (state == stMsDotNet)) {
-            return SCE_TERMINAL_MS;
+            return wxSTC_TERMINAL_MS;
         } else if ((state == stCtagsStringDollar) || (state == stCtags)) {
-            return SCE_TERMINAL_CTAG;
+            return wxSTC_TERMINAL_CTAG;
         } else if (initialColonPart && strstr(lineBuffer, ": warning C")) {
             // Microsoft warning without line number
             // <filename>: warning C9999
-            return SCE_TERMINAL_MS;
+            return wxSTC_TERMINAL_MS;
         } else {
-            return SCE_TERMINAL_DEFAULT;
+            return wxSTC_TERMINAL_DEFAULT;
         }
     }
 }
@@ -357,7 +357,7 @@ int StyleFromSequence(const char* seq) noexcept
         }
         seq++;
     }
-    return SCE_TERMINAL_ES_BLACK + bold * 8 + colour;
+    return wxSTC_TERMINAL_ES_BLACK + bold * 8 + colour;
 }
 
 void ColouriseErrorListLine(const std::string& lineBuffer, Sci_PositionU endPos, Accessor& styler, bool valueSeparate,
@@ -381,17 +381,17 @@ void ColouriseErrorListLine(const std::string& lineBuffer, Sci_PositionU endPos,
             const Sci_Position endSeqPosition = startPortion + (endSeq - linePortion) + 1;
             switch (*endSeq) {
             case 0:
-                styler.ColourTo(endPos, SCE_TERMINAL_ESCSEQ_UNKNOWN);
+                styler.ColourTo(endPos, wxSTC_TERMINAL_ESCSEQ_UNKNOWN);
                 return;
             case 'm': // Colour command
-                styler.ColourTo(endSeqPosition, SCE_TERMINAL_ESCSEQ);
+                styler.ColourTo(endSeqPosition, wxSTC_TERMINAL_ESCSEQ);
                 portionStyle = StyleFromSequence(startSeq + 2);
                 break;
             case 'K': // Erase to end of line -> ignore
-                styler.ColourTo(endSeqPosition, SCE_TERMINAL_ESCSEQ);
+                styler.ColourTo(endSeqPosition, wxSTC_TERMINAL_ESCSEQ);
                 break;
             default:
-                styler.ColourTo(endSeqPosition, SCE_TERMINAL_ESCSEQ_UNKNOWN);
+                styler.ColourTo(endSeqPosition, wxSTC_TERMINAL_ESCSEQ_UNKNOWN);
                 portionStyle = style;
             }
             startPortion = endSeqPosition;
@@ -401,7 +401,7 @@ void ColouriseErrorListLine(const std::string& lineBuffer, Sci_PositionU endPos,
     } else {
         if (valueSeparate && (startValue >= 0)) {
             styler.ColourTo(endPos - (lengthLine - startValue), style);
-            styler.ColourTo(endPos, SCE_TERMINAL_VALUE);
+            styler.ColourTo(endPos, wxSTC_TERMINAL_VALUE);
         } else {
             styler.ColourTo(endPos, style);
         }
@@ -442,11 +442,18 @@ const char* const emptyWordListDesc[] = { nullptr };
 
 } // namespace
 
-const LexerModule lmErrorList(SCLEX_TERMINAL, ColouriseErrorListDoc, "terminal", nullptr, emptyWordListDesc);
+const LexerModule lmErrorList(wxSTC_LEX_TERMINAL, ColouriseErrorListDoc, "terminal", nullptr, emptyWordListDesc);
 
 // Our API for exporting the lexer
-void* create_terminal_lexer()
+void* CreateExtraLexerTerminal()
 {
     const LexerModule* pModule = &lmErrorList;
     return (void*)new LexerSimple(pModule);
+}
+
+void FreeExtraLexer(void* p)
+{
+    if (p) {
+        delete reinterpret_cast<LexerSimple*>(p);
+    }
 }

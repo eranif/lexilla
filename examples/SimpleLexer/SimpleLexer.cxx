@@ -31,7 +31,7 @@ style.simple.1=fore:#FF0000
 
 #include "ILexer.h"
 #include "Scintilla.h"
-#include "SciLexer.h"
+#include "ExtraLexers.h"
 // Lexilla.h should not be included here as it declares statically linked functions without the __declspec( dllexport )
 
 #include "WordList.h"

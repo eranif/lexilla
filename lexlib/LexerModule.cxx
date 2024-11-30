@@ -12,7 +12,7 @@
 
 #include "ILexer.h"
 #include "Scintilla.h"
-#include "SciLexer.h"
+#include "ExtraLexers.h"
 
 #include "PropSetSimple.h"
 #include "WordList.h"
