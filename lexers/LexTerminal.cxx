@@ -408,7 +408,7 @@ void ColouriseErrorListLine(const std::string& lineBuffer, Sci_PositionU endPos,
     }
 }
 
-void ColouriseErrorListDoc(Sci_PositionU startPos, Sci_Position length, int, WordList*[], Accessor& styler)
+void ColouriseTerminalDoc(Sci_PositionU startPos, Sci_Position length, int, WordList*[], Accessor& styler)
 {
     std::string lineBuffer;
     styler.StartAt(startPos);
@@ -442,13 +442,11 @@ const char* const emptyWordListDesc[] = { nullptr };
 
 } // namespace
 
-const LexerModule lmErrorList(wxSTC_LEX_TERMINAL, ColouriseErrorListDoc, "terminal", nullptr, emptyWordListDesc);
-
 // Our API for exporting the lexer
 void* CreateExtraLexerTerminal()
 {
-    const LexerModule* pModule = &lmErrorList;
-    return (void*)new LexerSimple(pModule);
+    static LexerModule module(wxSTC_LEX_TERMINAL, ColouriseTerminalDoc, "terminal", nullptr, emptyWordListDesc);
+    return (void*)new LexerSimple(&module);
 }
 
 void FreeExtraLexer(void* p)
