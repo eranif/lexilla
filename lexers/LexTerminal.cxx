@@ -330,34 +330,274 @@ int RecogniseErrorListLine(const char* lineBuffer, Sci_PositionU lengthLine, Sci
     }
 }
 
+#define R(c) (((c) >> 16) & 0xff)
+#define G(c) (((c) >> 8) & 0xff)
+#define B(c) ((c) & 0xff)
+
+uint32_t base_colours[16] = {
+    0x000000, 0xcd0000, 0x00cd00, 0xcdcd00, 0x0000ee, 0xcd00cd, 0x00cdcd, 0xe5e5e5,
+    0x7f7f7f, 0xff0000, 0x00ff00, 0xffff00, 0x5c5cff, 0xff00ff, 0x00ffff, 0xffffff,
+};
+
+int base_colour_to_style[16] = { wxSTC_TERMINAL_ES_BLACK,        wxSTC_TERMINAL_ES_RED,
+                                 wxSTC_TERMINAL_ES_GREEN,        wxSTC_TERMINAL_ES_BROWN,
+                                 wxSTC_TERMINAL_ES_BLUE,         wxSTC_TERMINAL_ES_MAGENTA,
+                                 wxSTC_TERMINAL_ES_CYAN,         wxSTC_TERMINAL_ES_GRAY,
+                                 wxSTC_TERMINAL_ES_DARK_GRAY,    wxSTC_TERMINAL_ES_BRIGHT_RED,
+                                 wxSTC_TERMINAL_ES_BRIGHT_GREEN, wxSTC_TERMINAL_ES_YELLOW,
+                                 wxSTC_TERMINAL_ES_BRIGHT_BLUE,  wxSTC_TERMINAL_ES_BRIGHT_MAGENTA,
+                                 wxSTC_TERMINAL_ES_BRIGHT_CYAN,  wxSTC_TERMINAL_ES_WHITE };
+
+// clang-format off
+/// Returns sRGB colour corresponding to the index in the 256-colour ANSI palette
+uint32_t rgb_from_ansi256(uint8_t index) {
+    static uint32_t colours[256] = {
+        /* The 16 system colours as used by default by xterm.  Taken
+           from XTerm-col.ad distributed with xterm source code. */
+        0x000000, 0xcd0000, 0x00cd00, 0xcdcd00,
+        0x0000ee, 0xcd00cd, 0x00cdcd, 0xe5e5e5,
+        0x7f7f7f, 0xff0000, 0x00ff00, 0xffff00,
+        0x5c5cff, 0xff00ff, 0x00ffff, 0xffffff,
+
+        /* 6×6×6 cube.  One each axis, the six indices map to [0, 95,
+           135, 175, 215, 255] RGB component values. */
+        0x000000, 0x00005f, 0x000087, 0x0000af,
+        0x0000d7, 0x0000ff, 0x005f00, 0x005f5f,
+        0x005f87, 0x005faf, 0x005fd7, 0x005fff,
+        0x008700, 0x00875f, 0x008787, 0x0087af,
+        0x0087d7, 0x0087ff, 0x00af00, 0x00af5f,
+        0x00af87, 0x00afaf, 0x00afd7, 0x00afff,
+        0x00d700, 0x00d75f, 0x00d787, 0x00d7af,
+        0x00d7d7, 0x00d7ff, 0x00ff00, 0x00ff5f,
+        0x00ff87, 0x00ffaf, 0x00ffd7, 0x00ffff,
+        0x5f0000, 0x5f005f, 0x5f0087, 0x5f00af,
+        0x5f00d7, 0x5f00ff, 0x5f5f00, 0x5f5f5f,
+        0x5f5f87, 0x5f5faf, 0x5f5fd7, 0x5f5fff,
+        0x5f8700, 0x5f875f, 0x5f8787, 0x5f87af,
+        0x5f87d7, 0x5f87ff, 0x5faf00, 0x5faf5f,
+        0x5faf87, 0x5fafaf, 0x5fafd7, 0x5fafff,
+        0x5fd700, 0x5fd75f, 0x5fd787, 0x5fd7af,
+        0x5fd7d7, 0x5fd7ff, 0x5fff00, 0x5fff5f,
+        0x5fff87, 0x5fffaf, 0x5fffd7, 0x5fffff,
+        0x870000, 0x87005f, 0x870087, 0x8700af,
+        0x8700d7, 0x8700ff, 0x875f00, 0x875f5f,
+        0x875f87, 0x875faf, 0x875fd7, 0x875fff,
+        0x878700, 0x87875f, 0x878787, 0x8787af,
+        0x8787d7, 0x8787ff, 0x87af00, 0x87af5f,
+        0x87af87, 0x87afaf, 0x87afd7, 0x87afff,
+        0x87d700, 0x87d75f, 0x87d787, 0x87d7af,
+        0x87d7d7, 0x87d7ff, 0x87ff00, 0x87ff5f,
+        0x87ff87, 0x87ffaf, 0x87ffd7, 0x87ffff,
+        0xaf0000, 0xaf005f, 0xaf0087, 0xaf00af,
+        0xaf00d7, 0xaf00ff, 0xaf5f00, 0xaf5f5f,
+        0xaf5f87, 0xaf5faf, 0xaf5fd7, 0xaf5fff,
+        0xaf8700, 0xaf875f, 0xaf8787, 0xaf87af,
+        0xaf87d7, 0xaf87ff, 0xafaf00, 0xafaf5f,
+        0xafaf87, 0xafafaf, 0xafafd7, 0xafafff,
+        0xafd700, 0xafd75f, 0xafd787, 0xafd7af,
+        0xafd7d7, 0xafd7ff, 0xafff00, 0xafff5f,
+        0xafff87, 0xafffaf, 0xafffd7, 0xafffff,
+        0xd70000, 0xd7005f, 0xd70087, 0xd700af,
+        0xd700d7, 0xd700ff, 0xd75f00, 0xd75f5f,
+        0xd75f87, 0xd75faf, 0xd75fd7, 0xd75fff,
+        0xd78700, 0xd7875f, 0xd78787, 0xd787af,
+        0xd787d7, 0xd787ff, 0xd7af00, 0xd7af5f,
+        0xd7af87, 0xd7afaf, 0xd7afd7, 0xd7afff,
+        0xd7d700, 0xd7d75f, 0xd7d787, 0xd7d7af,
+        0xd7d7d7, 0xd7d7ff, 0xd7ff00, 0xd7ff5f,
+        0xd7ff87, 0xd7ffaf, 0xd7ffd7, 0xd7ffff,
+        0xff0000, 0xff005f, 0xff0087, 0xff00af,
+        0xff00d7, 0xff00ff, 0xff5f00, 0xff5f5f,
+        0xff5f87, 0xff5faf, 0xff5fd7, 0xff5fff,
+        0xff8700, 0xff875f, 0xff8787, 0xff87af,
+        0xff87d7, 0xff87ff, 0xffaf00, 0xffaf5f,
+        0xffaf87, 0xffafaf, 0xffafd7, 0xffafff,
+        0xffd700, 0xffd75f, 0xffd787, 0xffd7af,
+        0xffd7d7, 0xffd7ff, 0xffff00, 0xffff5f,
+        0xffff87, 0xffffaf, 0xffffd7, 0xffffff,
+
+        /* Greyscale ramp.  This is calculated as (index - 232) * 10 + 8
+           repeated for each RGB component. */
+        0x080808, 0x121212, 0x1c1c1c, 0x262626,
+        0x303030, 0x3a3a3a, 0x444444, 0x4e4e4e,
+        0x585858, 0x626262, 0x6c6c6c, 0x767676,
+        0x808080, 0x8a8a8a, 0x949494, 0x9e9e9e,
+        0xa8a8a8, 0xb2b2b2, 0xbcbcbc, 0xc6c6c6,
+        0xd0d0d0, 0xdadada, 0xe4e4e4, 0xeeeeee,
+    };
+
+    return colours[index];
+}
+
+// clang-format on
+
+/// Calculates distance between two colours.  Tries to balance speed and
+/// perceptual correctness.  It’s not a proper metric but two properties this
+/// function provides are: d(x, x) = 0 and d(x, y) < d(x, z) implies x being
+/// closer to y than to z.
+uint32_t distance(uint32_t x, uint32_t y)
+{
+    /* See <https://www.compuphase.com/cmetric.htm> though we’re doing a few
+       things to avoid some of the calculations.  We can do that since we
+       only care about some properties of the metric. */
+    int32_t r_sum = R(x) + R(y);
+    int32_t r = (int32_t)R(x) - (int32_t)R(y);
+    int32_t g = (int32_t)G(x) - (int32_t)G(y);
+    int32_t b = (int32_t)B(x) - (int32_t)B(y);
+    return (1024 + r_sum) * r * r + 2048 * g * g + (1534 - r_sum) * b * b;
+}
+
+/// Convert 256 colour index to style
+int style_from_colour_number(uint8_t number)
+{
+    if (number >= 30 && number <= 37) {
+        return base_colour_to_style[number - 30]; // normal colours are starting from 0
+    } else if (number >= 90 && number <= 97) {
+        return base_colour_to_style[number - 90 + 8]; // bright colours are starting from pos 8
+    }
+
+    // else
+    auto encoded = rgb_from_ansi256(number);
+    uint32_t dist = (uint32_t)-1;
+    size_t index = 0;
+    for (size_t i = 0; i < 16; ++i) {
+        auto base_colour = base_colours[i];
+        auto curdist = distance(encoded, base_colour);
+        if (curdist < dist) {
+            dist = curdist;
+            index = i;
+        }
+    }
+    return base_colour_to_style[index];
+}
+
 #define CSI "\033["
+#define CSI_LEN 2
+
+#define ESC "\033"
+#define ESC_LEN 1
 
 constexpr bool SequenceEnd(int ch) noexcept { return (ch == 0) || ((ch >= '@') && (ch <= '~')); }
+constexpr bool IsSeparator(int ch) noexcept { return (ch == ';' || ch == ':'); }
+
+enum class TokenType {
+    Eof,
+    Number,
+    Separator,
+};
+
+static TokenType ReadNext(const char* seq, size_t& number, size_t& consumed)
+{
+    enum StateInternal {
+        Start,
+        Digit,
+    };
+
+    number = 0;
+    StateInternal state = StateInternal::Start;
+    bool cont = true;
+    const char* start = seq;
+    while (cont && !SequenceEnd(*seq)) {
+        switch (state) {
+        case StateInternal::Start:
+            if (Is0To9(*seq)) {
+                state = StateInternal::Digit;
+                ++seq;
+            } else if (IsSeparator(*seq)) {
+                consumed = 1;
+                return TokenType::Separator;
+            } else {
+                consumed = 1;
+                return TokenType::Eof;
+            }
+            break;
+        case StateInternal::Digit:
+            if (Is0To9(*seq)) {
+                ++seq;
+            } else {
+                cont = false;
+            }
+            break;
+        }
+    }
+
+    if (state == StateInternal::Digit && start != seq) {
+        std::string_view sv(start, seq - start);
+        number = ::atoi(sv.data());
+        consumed = sv.length();
+        return TokenType::Number;
+    }
+
+    consumed = seq - start;
+    return TokenType::Eof;
+}
+
+#define CHECK_EQ_OR_RETURN(a, b, retval) \
+    if (a != b)                          \
+        return retval;
 
 int StyleFromSequence(const char* seq) noexcept
 {
-    int bold = 0;
-    int colour = 0;
-    while (!SequenceEnd(*seq)) {
-        if (Is0To9(*seq)) {
-            int base = *seq - '0';
-            if (Is0To9(seq[1])) {
-                base = base * 10;
-                base += seq[1] - '0';
-                seq++;
-            }
-            if (base == 0) {
-                colour = 0;
-                bold = 0;
-            } else if (base == 1) {
-                bold = 1;
-            } else if (base >= 30 && base <= 37) {
-                colour = base - 30;
-            }
-        }
-        seq++;
+    const char* p = seq;
+    size_t num, consumed;
+    // Common
+    TokenType t = ReadNext(p, num, consumed);
+    if (t == TokenType::Number && (num >= 0 && num <= 9)) {
+        p += consumed;
+        // Read the next token - it should be a separator
+        t = ReadNext(p, num, consumed);
+        CHECK_EQ_OR_RETURN(t, TokenType::Separator, wxSTC_TERMINAL_ES_BLACK);
+        p += consumed;
+        t = ReadNext(p, num, consumed);
     }
-    return wxSTC_TERMINAL_ES_BLACK + bold * 8 + colour;
+
+    if (t == TokenType::Number && num == 38) {
+        // foreground colour in the format of: 38;5;<number>
+        p += consumed;
+        t = ReadNext(p, num, consumed);
+        CHECK_EQ_OR_RETURN(t, TokenType::Separator, wxSTC_TERMINAL_ES_BLACK);
+
+        p += consumed;
+        t = ReadNext(p, num, consumed);
+        CHECK_EQ_OR_RETURN(t, TokenType::Number, wxSTC_TERMINAL_ES_BLACK);
+        CHECK_EQ_OR_RETURN(num, 5, wxSTC_TERMINAL_ES_BLACK);
+
+        p += consumed;
+        t = ReadNext(p, num, consumed);
+        CHECK_EQ_OR_RETURN(t, TokenType::Separator, wxSTC_TERMINAL_ES_BLACK);
+
+        p += consumed;
+        t = ReadNext(p, num, consumed);
+        CHECK_EQ_OR_RETURN(t, TokenType::Number, wxSTC_TERMINAL_ES_BLACK);
+        return style_from_colour_number((uint8_t)num);
+
+    } else if (t == TokenType::Number && num == 48) {
+        // background colour
+        return wxSTC_TERMINAL_ES_BLACK;
+    } else if (t == TokenType::Number && num < 256) {
+        // find the style from the colour table
+        return style_from_colour_number((uint8_t)num);
+    }
+    return wxSTC_TERMINAL_ES_BLACK;
+}
+
+#define NOT_FOUND std::string_view::npos
+bool findOtherEscape(std::string_view sv, size_t& pos, size_t& len)
+{
+    auto where = sv.find(ESC);
+    if (where == NOT_FOUND) {
+        return false;
+    }
+
+    std::string_view sub = sv.substr(where + ESC_LEN); // skip the escape
+    if (sub.find("(B") != NOT_FOUND || sub.find("(0") != NOT_FOUND || sub.find("(U") != NOT_FOUND ||
+        sub.find("(K") != NOT_FOUND) {
+        // found ESC(<B|0|U|K>
+        pos += where;
+        len = ESC_LEN + 2;
+        return true;
+    }
+    return false;
 }
 
 void ColouriseErrorListLine(const std::string& lineBuffer, Sci_PositionU endPos, Accessor& styler, bool valueSeparate,
@@ -373,9 +613,26 @@ void ColouriseErrorListLine(const std::string& lineBuffer, Sci_PositionU endPos,
         int portionStyle = style;
         while (const char* startSeq = strstr(linePortion, CSI)) {
             if (startSeq > linePortion) {
-                styler.ColourTo(startPortion + (startSeq - linePortion), portionStyle);
+                std::string_view prefix{ linePortion, static_cast<size_t>(startSeq - linePortion) };
+                size_t pos = startPortion;
+                while (!prefix.empty()) {
+                    size_t otherEscPos = 0;
+                    size_t otherEscLen = 0;
+                    if (findOtherEscape(prefix, otherEscPos, otherEscLen)) {
+                        if (otherEscPos != 0) {
+                            styler.ColourTo(pos + otherEscPos, portionStyle);
+                            pos += otherEscPos;
+                        }
+                        styler.ColourTo(pos + otherEscLen, wxSTC_TERMINAL_ESCSEQ_UNKNOWN);
+                        pos += otherEscLen;
+                        prefix = prefix.substr(otherEscPos + otherEscLen);
+                    } else {
+                        styler.ColourTo(pos + (startSeq - linePortion), portionStyle);
+                        break;
+                    }
+                }
             }
-            const char* endSeq = startSeq + 2;
+            const char* endSeq = startSeq + CSI_LEN;
             while (!SequenceEnd(*endSeq))
                 endSeq++;
             const Sci_Position endSeqPosition = startPortion + (endSeq - linePortion) + 1;
@@ -385,7 +642,7 @@ void ColouriseErrorListLine(const std::string& lineBuffer, Sci_PositionU endPos,
                 return;
             case 'm': // Colour command
                 styler.ColourTo(endSeqPosition, wxSTC_TERMINAL_ESCSEQ);
-                portionStyle = StyleFromSequence(startSeq + 2);
+                portionStyle = StyleFromSequence(startSeq + CSI_LEN);
                 break;
             case 'K': // Erase to end of line -> ignore
                 styler.ColourTo(endSeqPosition, wxSTC_TERMINAL_ESCSEQ);
