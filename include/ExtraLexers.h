@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <string>
 #define wxSTC_LEX_TERMINAL 200
 
 #define wxSTC_TERMINAL_DEFAULT 0
@@ -48,6 +50,18 @@
 #define wxSTC_TERMINAL_GCC_WARNING 56
 #define wxSTC_TERMINAL_GCC_NOTE 57
 
+class AccessorInterface
+{
+public:
+    virtual const char operator[](size_t index) const = 0;
+    virtual char SafeGetCharAt(size_t index, char chDefault = ' ') const = 0;
+    virtual void ColourTo(size_t pos, int style) = 0;
+    virtual void StartAt(size_t start) = 0;
+    virtual void StartSegment(size_t pos) = 0;
+    virtual int GetPropertyInt(const std::string& name, int defaultVal = 0) const = 0;
+};
+
 // API
 void* CreateExtraLexerTerminal();
 void FreeExtraLexer(void* lexer);
+void LexerTerminalStyle(size_t startPos, size_t length, AccessorInterface& styler);

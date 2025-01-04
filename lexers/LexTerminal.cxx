@@ -6,6 +6,8 @@
 // The License.txt file describes the conditions under which this software may
 // be distributed.
 
+#include "ExtraLexers.h"
+
 #include <cassert>
 #include <cstdarg>
 #include <cstdio>
@@ -17,7 +19,6 @@
 // clang-format off
 #include "ILexer.h"
 #include "Scintilla.h"
-#include "ExtraLexers.h"
 
 #include "InList.h"
 #include "WordList.h"
@@ -37,6 +38,30 @@ using namespace Lexilla;
 namespace
 {
 
+class NativeAccessor : public AccessorInterface
+{
+public:
+    NativeAccessor(Accessor& accessor)
+        : m_accessor(accessor)
+    {
+    }
+    const char operator[](size_t index) const override { return m_accessor[index]; }
+    char SafeGetCharAt(size_t index, char chDefault = ' ') const override
+    {
+        return m_accessor.SafeGetCharAt(index, chDefault);
+    }
+    void ColourTo(size_t pos, int style) override { m_accessor.ColourTo(pos, style); }
+    void StartAt(size_t start) override { m_accessor.StartAt(start); }
+    void StartSegment(size_t pos) override { m_accessor.StartSegment(pos); }
+    int GetPropertyInt(const std::string& name, int defaultVal = 0) const override
+    {
+        return m_accessor.GetPropertyInt(name, defaultVal);
+    };
+
+private:
+    Accessor& m_accessor;
+};
+
 bool strstart(const char* haystack, const char* needle) noexcept
 {
     return strncmp(haystack, needle, strlen(needle)) == 0;
@@ -46,7 +71,7 @@ constexpr bool Is0To9(char ch) noexcept { return (ch >= '0') && (ch <= '9'); }
 
 constexpr bool Is1To9(char ch) noexcept { return (ch >= '1') && (ch <= '9'); }
 
-bool AtEOL(Accessor& styler, Sci_Position i)
+bool AtEOL(AccessorInterface& styler, Sci_Position i)
 {
     return (styler[i] == '\n') || ((styler[i] == '\r') && (styler.SafeGetCharAt(i + 1) != '\n'));
 }
@@ -546,7 +571,7 @@ int StyleFromSequence(const char* seq) noexcept
         p += consumed;
         // Read the next token - it should be a separator
         t = ReadNext(p, num, consumed);
-        CHECK_EQ_OR_RETURN(t, TokenType::Separator, wxSTC_TERMINAL_ES_BLACK);
+        CHECK_EQ_OR_RETURN(t, TokenType::Separator, wxSTC_TERMINAL_DEFAULT);
         p += consumed;
         t = ReadNext(p, num, consumed);
     }
@@ -555,30 +580,30 @@ int StyleFromSequence(const char* seq) noexcept
         // foreground colour in the format of: 38;5;<number>
         p += consumed;
         t = ReadNext(p, num, consumed);
-        CHECK_EQ_OR_RETURN(t, TokenType::Separator, wxSTC_TERMINAL_ES_BLACK);
+        CHECK_EQ_OR_RETURN(t, TokenType::Separator, wxSTC_TERMINAL_DEFAULT);
 
         p += consumed;
         t = ReadNext(p, num, consumed);
-        CHECK_EQ_OR_RETURN(t, TokenType::Number, wxSTC_TERMINAL_ES_BLACK);
-        CHECK_EQ_OR_RETURN(num, 5, wxSTC_TERMINAL_ES_BLACK);
+        CHECK_EQ_OR_RETURN(t, TokenType::Number, wxSTC_TERMINAL_DEFAULT);
+        CHECK_EQ_OR_RETURN(num, 5, wxSTC_TERMINAL_DEFAULT);
 
         p += consumed;
         t = ReadNext(p, num, consumed);
-        CHECK_EQ_OR_RETURN(t, TokenType::Separator, wxSTC_TERMINAL_ES_BLACK);
+        CHECK_EQ_OR_RETURN(t, TokenType::Separator, wxSTC_TERMINAL_DEFAULT);
 
         p += consumed;
         t = ReadNext(p, num, consumed);
-        CHECK_EQ_OR_RETURN(t, TokenType::Number, wxSTC_TERMINAL_ES_BLACK);
+        CHECK_EQ_OR_RETURN(t, TokenType::Number, wxSTC_TERMINAL_DEFAULT);
         return style_from_colour_number((uint8_t)num);
 
     } else if (t == TokenType::Number && num == 48) {
         // background colour
-        return wxSTC_TERMINAL_ES_BLACK;
+        return wxSTC_TERMINAL_DEFAULT;
     } else if (t == TokenType::Number && num < 256) {
         // find the style from the colour table
         return style_from_colour_number((uint8_t)num);
     }
-    return wxSTC_TERMINAL_ES_BLACK;
+    return wxSTC_TERMINAL_DEFAULT;
 }
 
 #define NOT_FOUND std::string_view::npos
@@ -600,8 +625,8 @@ bool findOtherEscape(std::string_view sv, size_t& pos, size_t& len)
     return false;
 }
 
-void ColouriseErrorListLine(const std::string& lineBuffer, Sci_PositionU endPos, Accessor& styler, bool valueSeparate,
-                            bool escapeSequences)
+void ColouriseErrorListLine(const std::string& lineBuffer, Sci_PositionU endPos, AccessorInterface& styler,
+                            bool valueSeparate, bool escapeSequences)
 {
     Sci_Position startValue = -1;
     const Sci_PositionU lengthLine = lineBuffer.length();
@@ -665,7 +690,8 @@ void ColouriseErrorListLine(const std::string& lineBuffer, Sci_PositionU endPos,
     }
 }
 
-void ColouriseTerminalDoc(Sci_PositionU startPos, Sci_Position length, int, WordList*[], Accessor& styler)
+void ColouriseTerminalDocInternal(Sci_PositionU startPos, Sci_Position length, int, WordList*[],
+                                  AccessorInterface& styler)
 {
     std::string lineBuffer;
     styler.StartAt(startPos);
@@ -695,6 +721,12 @@ void ColouriseTerminalDoc(Sci_PositionU startPos, Sci_Position length, int, Word
     }
 }
 
+void ColouriseTerminalDoc(Sci_PositionU startPos, Sci_Position length, int, WordList*[], Accessor& styler)
+{
+    NativeAccessor accessor(styler);
+    ColouriseTerminalDocInternal(startPos, length, 0, nullptr, accessor);
+}
+
 const char* const emptyWordListDesc[] = { nullptr };
 
 } // namespace
@@ -711,4 +743,10 @@ void FreeExtraLexer(void* p)
     if (p) {
         delete reinterpret_cast<LexerSimple*>(p);
     }
+}
+
+/// Accessor API
+void LexerTerminalStyle(size_t startPos, size_t length, AccessorInterface& styler)
+{
+    ColouriseTerminalDocInternal(startPos, length, 0, nullptr, styler);
 }
